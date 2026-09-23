@@ -11,7 +11,7 @@
 #
 # Input arguments from environment variables:
 # TAMPER: bad_base | bad_digits | bad_index | bad_value | bare_hash | binary
-#         | core_junk | crlf | die_at | die_status_at | diversity_model
+#         | core_junk | core_reverse | crlf | die_at | die_status_at | diversity_model
 #         | dup_model | err_assume | err_core | err_multiline | err_once
 #         | err_phase | err_reply | err_trunc | err_unbal | err_unbal_cont
 #         | garbage_assume | garbage_at | garbage_model | garbage_status
@@ -26,6 +26,7 @@
 #   bare_hash        - replace the Nth model reply with one value that is only "#"
 #   binary           - replace the Nth model reply with binary values
 #   core_junk        - prepend garbage to the core reply and close the pipe
+#   core_reverse     - reverse the order of the names in the Nth unsat-core reply
 #   crlf             - end every line with CRLF
 #   die_at           - kill the solver at the Nth model reply and exit, closing every pipe end
 #   die_status_at    - kill the solver at the Nth status line and exit, closing every pipe end
@@ -97,7 +98,7 @@ PHASE_MODES = ("err_phase", "phase_model", "phase_trunc")
 # Modes acting on an unsat-assumptions reply, which lists a<N> literals
 ASSUME_MODES = ("err_assume", "garbage_assume", "oor_assume")
 # Modes acting on an unsat-core reply, which lists cons<N> names
-CORE_MODES = ("core_junk", "err_core")
+CORE_MODES = ("core_junk", "core_reverse", "err_core")
 # Modes rewriting every line, so they never consume the index
 STREAM_MODES = ("crlf", "indent", "multiline", "success")
 
@@ -234,6 +235,11 @@ for line in proc.stdout:
     if mode == "binary":
         emit("((a #b00001011) (b #b00010010))")
         swallow(line)
+        continue
+    if mode == "core_reverse":
+        names = re.findall(r"cons\d+", " ".join(read_full(line)))
+        emit("(" + " ".join(reversed(names)) + ")")
+        depth, inside = 0, False
         continue
     if mode == "core_junk":
         emit("junk((cons0))")
