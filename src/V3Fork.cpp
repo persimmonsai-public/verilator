@@ -316,6 +316,10 @@ class DynScopeVisitor final : public VNVisitor {
         AstMemberSel* const membersel = new AstMemberSel{
             refp->fileline(), new AstVarRef{refp->fileline(), dynScope.m_handlep, refp->access()},
             refp->varp()};
+        // Keep the original reference's access so a write through the captured variable
+        // stays an lvalue; otherwise the emitter picks the const accessor for associative
+        // array selects (`.at()` instead of `.atWrite()`).
+        membersel->access(refp->access());
         if (refp->varp()->direction().isAny()) {
             membersel->varp(
                 VN_AS(m_memberMap.findMember(dynScope.m_classp, refp->varp()->name()), Var));
