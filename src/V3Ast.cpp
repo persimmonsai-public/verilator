@@ -1733,7 +1733,14 @@ static VCastable computeCastableImp(const AstNodeDType* toDtp, const AstNodeDTyp
             if (!checkIfaceArgCompat) return castable;
             return VCastable::INCOMPATIBLE;
         }
-        const bool sameModport = toIfp->modportp() == fromIfp->modportp();
+        // Modports are cloned per cell binding and per class specialization, so compare
+        // them by name, not by pointer. A type parameter's dtype may carry only the
+        // modport name, with modportp() not linked.
+        const std::string toMpName
+            = toIfp->modportp() ? toIfp->modportp()->name() : toIfp->modportName();
+        const std::string fromMpName
+            = fromIfp->modportp() ? fromIfp->modportp()->name() : fromIfp->modportName();
+        const bool sameModport = toMpName == fromMpName;
         if (!checkIfaceArgCompat) {
             if (!toIfp->modportp() || sameModport) return VCastable::COMPATIBLE;
             return castable;

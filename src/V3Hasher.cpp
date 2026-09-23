@@ -184,6 +184,7 @@ class HasherVisitor final : public VNVisitorConst {
     void visit(AstIfaceRefDType* nodep) override {
         m_hash += hashNodeAndIterate(nodep, false, HASH_CHILDREN, [this, nodep]() {  //
             iterateConstNull(nodep->cellp());
+            m_hash += nodep->modportName();  // Modport distinguishes the type
         });
     }
     void visit(AstQueueDType* nodep) override {
