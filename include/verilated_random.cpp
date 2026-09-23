@@ -428,6 +428,20 @@ class VlSolverSession final {
     std::string m_program VL_GUARDED_BY(m_mutex);  // Storage backing m_argv
     std::vector<const char*> m_argv VL_GUARDED_BY(m_mutex);  // Solver argv
     bool m_warnedRestart VL_GUARDED_BY(m_mutex) = false;
+    bool m_isZ3 VL_GUARDED_BY(m_mutex) = false;  // Solver program is z3
+
+    // After (reset), z3 rebuilds its term manager lazily on the next command that needs it,
+    // which costs several milliseconds and used to land inside the next randomize(). A
+    // throwaway declaration right after the reset triggers the rebuild at once, so it
+    // overlaps with the simulation. It creates no solver state and the next transaction
+    // never refers to it, so every transaction still starts on a solver that has never
+    // been used and the models are unchanged. z3 accepts a declaration before
+    // (set-logic); stricter SMT-LIB solvers may not, so this is done for z3 only.
+    void warmUp() VL_REQUIRES(m_mutex) {
+        if (!m_isZ3) return;
+        m_proc << "(declare-const __Vsolver_warm Bool)\n";
+        m_proc.flush();
+    }
 
 public:
     std::iostream& os() VL_REQUIRES(m_mutex) { return m_proc; }
@@ -472,6 +486,7 @@ public:
             m_proc.flush();
             healthy = !m_proc.fail();
         }
+        if (healthy) warmUp();
         if (healthy) {
             m_consecFails = 0;
         } else {
@@ -495,6 +510,9 @@ private:
                 }
             }
             m_argv.emplace_back(nullptr);
+            const std::string prog{m_argv[0]};
+            const size_t slash = prog.find_last_of('/');
+            m_isZ3 = prog.compare(slash == std::string::npos ? 0 : slash + 1, 2, "z3") == 0;
         }
         m_proc.open(m_argv.data());
         m_proc << "(set-logic QF_ABV)\n";
