@@ -23,6 +23,7 @@
 
 #include "verilated_random.h"
 
+#include <algorithm>
 #include <cassert>
 #include <fstream>
 #include <iomanip>
@@ -1391,7 +1392,9 @@ void VlRandomizer::reportUnsatCore(VlSolverSession& sess) VL_REQUIRES(sess.m_mut
         warnSolverReply(reply);
         return;
     }
-    const std::vector<int> numbers = scanIntRuns(reply);
+    std::vector<int> numbers = scanIntRuns(reply);
+    // The core lists constraints in solver-internal order; report them in source order
+    std::sort(numbers.begin(), numbers.end());
     if (Verilated::threadContextp()->warnUnsatConstr()) {
         for (const int n : numbers) {
             if (static_cast<size_t>(n) < m_constraints_line.size()) {
